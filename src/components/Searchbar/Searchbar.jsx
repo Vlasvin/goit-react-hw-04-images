@@ -10,9 +10,6 @@ import { FaSearch } from 'react-icons/fa';
 
 export const Searchbar = ({ onSubmit }) => {
   const [nameSearch, setNameSearch] = useState('');
-  // state = {
-  //   nameSearch: '',
-  // };
 
   const handleChange = e => setNameSearch(e.currentTarget.value.toLowerCase());
 

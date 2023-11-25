@@ -1,58 +1,51 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { ImageFinder, ErrorMsg } from './App.styled';
-import ApiService from 'services/api';
+import ApiService from 'services/api.js';
 import { Loader } from './Loader/Loader';
 
-export class App extends Component {
-  state = {
-    nameSearch: '',
-    images: [],
-    page: 1,
-    loadMore: false,
-    showModal: false,
-    isLoader: false,
-    modalData: { img: '', tags: '' },
-    error: null,
+export const App = () => {
+  const [nameSearch, setNameSearch] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loadMore, setLoadMore] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [isLoader, setIsLoader] = useState(false);
+  const [modalData, setModalData] = useState({ img: '', tags: '' });
+  const [error, setError] = useState(null);
+
+  const handleSubmit = nameSearch => {
+    setNameSearch(nameSearch);
+    setPage(1);
   };
 
-  handleSubmit = nameSearch => {
-    this.setState({ nameSearch: nameSearch, page: 1 });
+  const handleLoadClick = prevState => setPage(page + 1);
+
+  const addModalData = (img, tags) => {
+    setShowModal(true);
+    setModalData({ img, tags });
   };
 
-  handleLoadClick = prevState => {
-    this.setState({ page: this.state.page + 1 });
+  const closeModal = () => {
+    setShowModal(false);
   };
 
-  setModalData = (img, tags) => {
-    this.setState({ showModal: true, modalData: { img, tags } });
-  };
+  useEffect(() => {
+    if (nameSearch) {
+      setIsLoader(true);
+      setLoadMore(false);
+      setError(null);
 
-  closeModal = () => {
-    this.setState({ showModal: false });
-  };
-
-  componentDidUpdate(prevProps, prevState) {
-    const PrevState = prevState.nameSearch;
-    const NextState = this.state.nameSearch;
-    const { page } = this.state;
-
-    if (PrevState !== NextState || page !== prevState.page) {
-      this.setState({ isLoader: true, loadMore: false, error: null });
-
-      const apiService = new ApiService(NextState, page);
+      const apiService = new ApiService(nameSearch, page);
       apiService
         .fetchImg(page)
         .then(images => {
           if (images.hits.length > 0) {
-            this.setState(prevState => ({
-              images:
-                page === 1
-                  ? images.hits
-                  : [...prevState.images, ...images.hits],
-              loadMore: page < Math.ceil(images.totalHits / 12),
-            }));
+            setImages(prev =>
+              page === 1 ? images.hits : [...prev, ...images.hits]
+            );
+            setLoadMore(page < Math.ceil(images.totalHits / 12));
           } else {
             return Promise.reject(
               new Error('Oops... there are no images matching your search...')
@@ -60,30 +53,29 @@ export class App extends Component {
           }
         })
         .catch(error => {
-          this.setState({ images: [], error });
+          setImages([]);
+          setError(error);
         })
-        .finally(this.setState({ isLoader: false }));
+        .finally(setIsLoader(false));
     }
-  }
+  }, [nameSearch, page]);
 
-  render() {
-    return (
-      <ImageFinder>
-        <Searchbar onSubmit={this.handleSubmit}></Searchbar>
-        {this.state.error && <ErrorMsg>{this.state.error.message}</ErrorMsg>}
-        {!this.state.isLoader && (
-          <ImageGallery
-            loadMore={this.state.loadMore}
-            showModal={this.state.showModal}
-            images={this.state.images}
-            handleLoadClick={this.handleLoadClick}
-            closeModal={this.closeModal}
-            setModalData={this.setModalData}
-            modalData={this.state.modalData}
-          ></ImageGallery>
-        )}
-        {this.state.isLoader && <Loader></Loader>}
-      </ImageFinder>
-    );
-  }
-}
+  return (
+    <ImageFinder>
+      <Searchbar onSubmit={handleSubmit}></Searchbar>
+      {error && <ErrorMsg>{error.message}</ErrorMsg>}
+      {!isLoader && (
+        <ImageGallery
+          loadMore={loadMore}
+          showModal={showModal}
+          images={images}
+          handleLoadClick={handleLoadClick}
+          closeModal={closeModal}
+          setModalData={addModalData}
+          modalData={modalData}
+        ></ImageGallery>
+      )}
+      {isLoader && <Loader></Loader>}
+    </ImageFinder>
+  );
+};
